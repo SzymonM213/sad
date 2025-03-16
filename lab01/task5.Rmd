@@ -1,0 +1,16 @@
+```{r}
+library(ggplot2)
+```
+
+```{r}
+data(DNase)
+
+help(DNase)
+
+ggplot(DNase[seq(2, nrow(DNase), 2),], aes(x = conc, y = density, col=Run)) +
+  geom_line() +
+  geom_point() +
+  theme_minimal()
+  
+
+```

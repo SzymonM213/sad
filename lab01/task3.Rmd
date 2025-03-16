@@ -1,0 +1,5 @@
+```{r}
+data(iris)
+iris$Sepal.area <- iris$Sepal.Length * iris$Sepal.Width
+head(iris)
+```
