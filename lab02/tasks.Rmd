@@ -1,0 +1,141 @@
+```{r}
+library(ggplot2)
+```
+
+### Task 1
+
+```{r}
+mi <- 0
+sigma <- 4
+n <- 5000
+
+x <- rnorm(n, mi, sigma)
+mean <- sum(x) / n
+var_unbiased <- sum((x-mean)^2) / (n - 1)
+var_mle <- sum((x-mean)^2) / n
+sd_mle <- sqrt(var_mle)
+
+print("Nieobciążony estymator wariancji:")
+var_unbiased
+print("Estymator największej wiarygodności wariancji:")
+var_mle
+print("Estymator największej wiarygodności odchylenia standardowego:")
+sd_mle
+
+print("funkcja var:")
+var(x)
+print("funkcja sd:")
+sd(x)
+```
+
+### Task 2
+
+```{r}
+n <- 5000
+mi <- 0
+sigma <- 2
+
+x <- rnorm(5000, mi, sigma)
+M <- matrix(x, nrow=10)
+
+S <- apply(M, 2, var)
+S1 <- (S * (nrow(M)-1)) / nrow(M)
+S2 <- (S * (nrow(M)-1)) / (nrow(M) + 1)
+
+bias_S <- mean(S) - sigma^2
+bias_S1 <- mean(S1) - sigma^2
+bias_S2 <- mean(S2) - sigma^2
+
+sd_S <- sd(S)
+sd_S1 <- sd(S1)
+sd_S2 <- sd(S2)
+
+rmse_S <- sqrt(mean((S - sigma^2)^2))
+rmse_S1 <- sqrt(mean((S1 - sigma^2)^2))
+rmse_S2 <- sqrt(mean((S2 - sigma^2)^2))
+
+cat("Obciążenie:\n")
+cat("S:", bias_S, "S1:", bias_S1, "S2:", bias_S2, "\n")
+
+cat("Odchylenie standardowe:\n")
+cat("S:", sd_S, "S1:", sd_S1, "S2:", sd_S2, "\n")
+
+cat("RMSE:\n")
+cat("S:", rmse_S, "S1:", rmse_S1, "S2:", rmse_S2, "\n")
+```
+
+```{r}
+S_data <- data.frame('var_values' = S)
+ggplot(S_data) + geom_histogram(aes(x=var_values), bins=30) +      
+  geom_point(aes(x=sigma^2,y=0), col='red', size=3) +           
+  geom_vline(xintercept = sigma^2, col='red')
+```
+
+### Task 3
+
+```{r}
+sample_sd <- function(N, n) {
+  M <- matrix(rnorm(N*n), nrow = N)
+  return(apply(M, 1, sd))
+}
+
+```
+
+```{r}
+n <- 2:100
+sd_estimates <- sapply(n, sample_sd, N=100)
+sd_to_plot <- data.frame('SD'=c(sd_estimates), 'n'=rep(n, each=100))
+
+my_sd_plot <- ggplot(sd_to_plot, aes(x=n, y=SD)) +
+    geom_point(alpha=0.1) +
+    geom_smooth()
+```
+
+```{r}
+my_sd_plot
+```
+
+### Task 4
+
+```{r}
+data(iris)
+setosa_data <- iris[iris$Species == 'setosa', ]
+
+mean_width <- mean(setosa_data$Sepal.Width)
+mean_length <- mean(setosa_data$Sepal.Length)
+
+sd_width <- sd(setosa_data$Sepal.Width)
+sd_length <- sd(setosa_data$Sepal.Length)
+
+cat("Mean width: ", mean_width, "\n")
+cat("Mean length: ", mean_length, "\n")
+
+cat("Width sd: ", sd_width, "\n")
+cat("Length sd: ", sd_length, "\n")
+
+```
+
+```{r}
+cor(setosa_data$Sepal.Width, setosa_data$Sepal.Length)
+cor(setosa_data$Petal.Length, setosa_data$Sepal.Length)
+```
+
+```{r}
+ggplot(setosa_data, aes(x = Sepal.Width, y = Sepal.Length)) + geom_point()
+ggplot(setosa_data, aes(x = Petal.Length, y = Sepal.Length)) + geom_point()
+```
+
+### Monte Carlo
+
+```{r}
+isInCircle <- function(x) {
+  return(x[1]^2 + x[2]^2 <= 1)
+}
+```
+
+```{r}
+n <- 100000
+M <- matrix(runif(2*n, 0, 1), nrow=2)
+pi <- mean(apply(M, 2, isInCircle)) * 4
+pi
+```
