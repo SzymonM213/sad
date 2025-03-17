@@ -1,0 +1,72 @@
+```{r}
+library(ggplot2)
+```
+
+### Task 1
+
+```{r}
+summary(zadluzenie$Zadłużenie.gmin)
+```
+
+```{r}
+mean <- mean(zadluzenie$Zadłużenie.gmin)
+sd <- sd(zadluzenie$Zadłużenie.gmin)
+diff <- sd - mean
+
+percentage_deviation <- (sd / mean) * 100
+percentage_deviation
+```
+
+```{r}
+ggplot(zadluzenie, aes(Zadłużenie.gmin)) + 
+  geom_histogram()
+```
+
+### Task 2
+
+```{r}
+qqplot_zadluzenia <- ggplot(zadluzenie, aes(sample = Zadłużenie.gmin)) +
+  stat_qq() +
+  stat_qq_line()
+
+qqplot_zadluzenia
+  
+```
+
+### Task 3
+
+```{r}
+data(iris)
+versicolor_data <- iris[iris$Species == 'versicolor', ]
+```
+
+```{r}
+ggplot(versicolor_data, aes(sample = Sepal.Width )) +
+  stat_qq() +
+  stat_qq_line()
+```
+
+```{r}
+x <- versicolor_data$Sepal.Width
+alpha = 0.95
+
+n <- length(x)
+mn <- mean(x)
+sd <- sd(x)
+
+t <- qt(1 - alpha / 2, n-1)
+l <- mn - (t * sd) / sqrt(n-1)
+r <- mn + (t * sd) / sqrt(n-1)
+
+cat("(", l, ", ", r, ")\n")
+```
+
+### Task 4
+
+```{r}
+q <- qnorm(1 - alpha / 2)
+l <- mn - (q * sd) / sqrt(n)
+r <- mn + (q * sd) / sqrt(n)
+
+cat("(", l, ", ", r, ")\n")
+```
