@@ -1,0 +1,38 @@
+### Task 1
+
+Dane zebrane przez zespół wskazują, że przed rokiem 2000 *R. longicorn* zamieszkujące składy drewna stanowiły 0.40 wszystkich wystąpień tego owada. Po 2000 liczba ta wzrosła do 0.76.\
+
+Za pomocą testu niezależności chi-kwadrat zweryfikuj, czy wybór siedliska zależy od okresu.\
+
+Oblicz p-wartość korzystając z funkcji `pchisq`, a następnie zweryfikuj swoje wyniki za pomocą `chisq.test`.
+
+```{r}
+before = 0.4
+after = 0.76
+n = 110
+
+observed <- matrix(c(before * n, after * n, (1 - before) * n, (1 - after) * n), nrow = 2, byrow = TRUE)
+
+row_totals <- rowSums(observed)
+col_totals <- colSums(observed)
+total <- sum(observed)
+expected <- outer(row_totals, col_totals) / total
+chi_squared_stat <- sum((observed - expected)^2 / expected)
+
+df <- (nrow(observed) - 1) * (ncol(observed) - 1)
+p_value <- 1 - pchisq(chi_squared_stat, df)
+
+print("Observed counts:")
+print(observed)
+print("Expected counts:")
+print(expected)
+cat("Chi-squared statistic:", chi_squared_stat, "\n")
+cat("Degrees of freedom:", df, "\n")
+cat("P-value:", p_value, "\n")
+
+chisq_test <- chisq.test(observed)
+print(chisq_test)
+
+
+
+```
