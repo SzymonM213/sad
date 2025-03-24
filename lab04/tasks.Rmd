@@ -7,32 +7,148 @@ Za pomocą testu niezależności chi-kwadrat zweryfikuj, czy wybór siedliska za
 Oblicz p-wartość korzystając z funkcji `pchisq`, a następnie zweryfikuj swoje wyniki za pomocą `chisq.test`.
 
 ```{r}
-before = 0.4
-after = 0.76
-n = 110
+N <- 110
+wood_percentage <- 0.667
+before_percentage <- 0.4
+after_percentage <- 0.76
 
-observed <- matrix(c(before * n, after * n, (1 - before) * n, (1 - after) * n), nrow = 2, byrow = TRUE)
+wood_count <- N * wood_percentage
+natural_count <- N - wood_count
 
-row_totals <- rowSums(observed)
-col_totals <- colSums(observed)
-total <- sum(observed)
+before_count <- N * 0.5
+after_count <- N * 0.5
+
+O11 <- before_count * before_percentage
+O12 <- after_count * after_percentage
+O21 <- wood_count - (O11 + O12)
+O22 <- natural_count - O21
+
+contingency_table <- matrix(c(O11, O21, O12, O22),
+                            nrow = 2, byrow = TRUE)
+
+print(contingency_table)
+
+row_totals <- rowSums(contingency_table)
+col_totals <- colSums(contingency_table)
+total <- sum(contingency_table)
 expected <- outer(row_totals, col_totals) / total
-chi_squared_stat <- sum((observed - expected)^2 / expected)
+chi_squared_stat <- sum((contingency_table - expected)^2 / expected)
 
-df <- (nrow(observed) - 1) * (ncol(observed) - 1)
+df <- (nrow(contingency_table) - 1) * (ncol(contingency_table) - 1)
 p_value <- 1 - pchisq(chi_squared_stat, df)
 
-print("Observed counts:")
-print(observed)
-print("Expected counts:")
-print(expected)
-cat("Chi-squared statistic:", chi_squared_stat, "\n")
-cat("Degrees of freedom:", df, "\n")
-cat("P-value:", p_value, "\n")
+df <- (nrow(contingency_table) - 1) * (ncol(contingency_table) - 1)
+p_value <- 1 - pchisq(chi_square_stat, df)
 
-chisq_test <- chisq.test(observed)
-print(chisq_test)
+cat("chi-kwadrat:", chi_square_stat, "\n")
+cat("Stopnie swobody:", df, "\n")
+cat("p-wartość:", p_value, "\n")
 
+test_result <- chisq.test(contingency_table, correct = FALSE)
+cat("wynik chisq.test:", test_result$statistic, test_result$p.value, test_result$parameter)
+```
 
+### Task 2
 
+```{r}
+Zadluzenie.gmin <- read.delim("Zadluzenie gmin.csv", colClasses = c('factor', 'factor', 'factor', 'numeric', 'factor', 'factor'))
+```
+
+```{r}
+library(stringr)
+```
+
+```{r}
+Zadluzenie.gmin$Kod.Woj <- str_sub(Zadluzenie.gmin$Kod.Teryt, 0, 2)
+```
+
+```{r}
+slownik <- c('02' = 'Dolnośląskie', '04' = 'Kujawsko-pomorskie',
+             '06' = 'Lubelskie', '08' = 'Lubuskie',
+             '10' = 'Łódzkie', '12' = 'Małopolskie',
+             '14' = 'Mazowieckie', '16' = 'Opolskie', 
+             '18' = 'Podkarpackie', '20' = 'Podlaskie',
+             '22' = 'Pomorskie', '24' = 'Śląskie',
+             '26' = 'Świętokrzyskie', '28' = 'Warmińsko-mazurskie',
+             '30' = 'Wielkopolskie',  '32' = 'Zachodniopomorskie')
+```
+
+```{r}
+Zadluzenie.gmin$Woj <- slownik[Zadluzenie.gmin$Kod.Woj]
+```
+
+### Task 3
+
+Czy na podstawie danych możemy stwierdzić, że średnie zadłużenie gminy w województwie mazowieckim jest mniejsze niż 25%? Wykorzystaj jednopróbkowy test t Studenta przy hipotezach H0:μ=25, H1:μ\<25. Oblicz p-wartość samodzielnie, a następnie porównaj swój wynik z funkcją `t.test`. Dystrybuantę rozkładu t Studenta możesz obliczyć korzystając z funkcji `pt`. Pamiętaj, że funkcja `var` wykorzystuje nieobciążony estymator wariancji.
+
+```{r}
+library(glue)
+
+mi <- 25
+Zadluzenie.maz <- Zadluzenie.gmin[Zadluzenie.gmin$Woj == 'Mazowieckie', ]
+
+mean <- mean(Zadluzenie.maz$Zadłużenie)
+sd <- sd(Zadluzenie.maz$Zadłużenie)
+t <- (mean - mi) / (sd / sqrt(nrow(Zadluzenie.maz)))
+df <- nrow(Zadluzenie.maz) - 1
+p_value <- 2 * pt(-abs(t), df)
+glue('t: {t}, df: {df}, p-value: {p_value}')
+
+```
+
+### Task 4
+
+```{r}
+lodzkie <- Zadluzenie.gmin[Zadluzenie.gmin$Woj == 'Łódzkie', ]$Zadłużenie.gmin
+pomorskie <- Zadluzenie.gmin[Zadluzenie.gmin$Woj == 'Pomorskie', ]$Zadłużenie.gmin
+```
+
+```{r}
+sigma_squared_0 <- 226
+
+test_variance <- function(data, sigma_squared_0) {
+  n <- length(data)
+  sample_variance <- var(data)
+  chi_square_stat <- (n - 1) * sample_variance / sigma_squared_0
+  p_value <- 2 * min(pchisq(chi_square_stat, df = n - 1), 
+                     1 - pchisq(chi_square_stat, df = n - 1))
+  
+  return(list(chi_square_stat = chi_square_stat, p_value = p_value))
+}
+
+glue("łódzkie: {test_variance(lodzkie, sigma_squared_0)}")
+glue("pomorskie: {test_variance(pomorskie, sigma_squared_0)}")
+```
+
+### Task 5
+
+```{r}
+mean_l = mean(lodzkie)
+mean_p = mean(pomorskie)
+
+s_l <- sd(lodzkie)
+s_p <- sd(pomorskie)
+
+var_l <- var(lodzkie)
+var_p <- var(pomorskie)
+
+n_l = length(lodzkie)
+n_p = length(pomorskie)
+
+t_stat <- (mean_p - mean_l) / sqrt((var_p / n_p) + (var_l / n_l))
+df <- ((var_p / n_p) + (var_l / n_l))^2 / 
+      (((var_p / n_p)^2 / (n_p - 1)) + ((var_l / n2)^2 / (n_l - 1)))
+p_value <- pt(t_stat, df = df, lower.tail = FALSE)
+
+glue("t: {t_stat}")
+glue("st. swobody: {df}")
+glue("p-val: {p_value}")
+```
+
+```{r}
+test_result <- t.test(pomorskie, lodzkie, alternative = "greater", var.equal = TRUE)
+
+# Wyniki
+cat("Statystyka t:", test_result$statistic, "\n")
+cat("p-wartość:", test_result$p.value, "\n")
 ```
