@@ -1,0 +1,143 @@
+### Task 1
+
+```{r}
+library(ggplot2)
+
+x1 = replicate(1000, rnorm(10, 0.5, 1))
+x2 = replicate(1000, rnorm(10, -0.5, 1))
+
+t_p_values <- sapply(1:ncol(x1), function(i) t.test(x1[,i], x2[,i], var.equal = T)$p.value)
+
+w_p_values <- sapply(1:ncol(x1), function(i) wilcox.test(x1[,i], x2[,i])$p.value)
+
+dane_do_wykresu <- data.frame('Test'=rep(c('Student', 'Wilcox'), each=1000), 'p_wartosc' = c(t_p_values, w_p_values))
+ggplot(dane_do_wykresu) + geom_histogram(aes(x=p_wartosc, fill=Test), binwidth=0.01) + theme_minimal()
+```
+
+```{r}
+sum(t_p_values < w_p_values)
+```
+
+```{r}
+alpha <- 0.05
+student_odrzucil <- t_p_values < alpha
+wilcox_odrzucil <- w_p_values < alpha
+```
+
+```{r}
+mean(student_odrzucil)
+```
+
+```{r}
+mean(wilcox_odrzucil)
+```
+
+### Task 2
+
+```{r}
+summary(Zarobki)
+
+t_test_result <- t.test(Zarobki ~ Kraj, data = Zarobki)
+
+print(t_test_result)
+```
+
+### Task 3
+
+Zainstaluj i załaduj bibliotekę ISLR. Załaduj dane Khan za pomocą komendy data(Khan) (zwróć uwagę na brak cudzysłowu). Dane dotyczą ekspresji genów w zależności od rodzaju nowotworu. Wyniki pomiaru ekspresji genów zapisane są w polu Khan\$xtrain, a rodzaj nowotworu w polu Khan\$ytrain. Więcej informacji na temat danych możesz znaleźć w dokumentacji, którą możesz wyświetlić w Rstudio wpisując w konsolę ?Khan lub help(Khan).
+
+-   Wybierz te wiersze z macierzy `Khan$xtrain`, które odpowiadają rodzajowi 2 oraz 4, i zapisz je w dwóch macierzach.
+
+-   Dla każdego genu sprawdź, czy jego ekspresja zależy od rodzaju nowotworu, używając funkcji `t.test` do przeprowadzenia testu Welsha (czyli testu t Studenta dla prób o różnych wariancjach). Zapisz otrzymane p-wartości w wektorze.
+
+-   Przeprowadź korekcje p-wartości metodami Bonferroniego, Holma, oraz Benjamini-Hochberg.
+
+```{r}
+library(ISLR)
+data(Khan)
+
+xtrain_2 <- Khan$xtrain[Khan$ytrain == 2, ]
+xtrain_4 <- Khan$xtrain[Khan$ytrain == 4, ]
+
+p_values <- apply(Khan$xtrain, 2, function(gene_expression) {
+  t.test(gene_expression[Khan$ytrain == 2], 
+         gene_expression[Khan$ytrain == 4])$p.value
+})
+
+p_bonferroni <- p.adjust(p_values, method = "bonferroni")
+p_holm <- p.adjust(p_values, method = "holm")
+p_bh <- p.adjust(p_values, method = "BH")
+```
+
+### Task 5
+
+```{r}
+matrix_data <- cbind(
+  matrix(rnorm(10 * 100, mean = 1, sd = 1), nrow = 10),
+  matrix(rnorm(10 * 900, mean = 0, sd = 1), nrow = 10)
+)
+```
+
+```{r}
+p_values <- apply(matrix_data, 2, function(column) {
+  t.test(column, mu = 0, alternative = "greater")$p.value
+})
+
+p_bonferroni <- p.adjust(p_values, method = "bonferroni")
+p_holm <- p.adjust(p_values, method = "holm")
+p_bh <- p.adjust(p_values, method = "BH")
+```
+
+```{r}
+library(ggplot2)
+
+plot_histogram <- function(data, title, xlab) {
+  ggplot(data.frame(value = data), aes(x = value)) +
+    geom_histogram(binwidth = 0.05, fill = "blue", color = "black", alpha = 0.7) +
+    labs(title = title, x = xlab, y = "Frequency") +
+    theme_minimal()
+}
+
+par(mfrow = c(1, 1))  # Reset layout
+print(plot_histogram(p_values, "Rozkład p-wartości", "p-wartości"))
+print(plot_histogram(p_bonferroni, "Rozkład q-wartości (Bonferroni)", "q-wartości"))
+print(plot_histogram(p_holm, "Rozkład q-wartości (Holm)", "q-wartości"))
+print(plot_histogram(p_bh, "Rozkład q-wartości (BH)", "q-wartości"))
+```
+
+```{r}
+results <- data.frame(
+  p_values = p_values,
+```
+
+```{q_bonferroni = p_bonferroni,}
+  q_holm = p_holm,
+  q_bh = p_bh
+)
+```
+
+```{r}
+alpha <- 0.05
+true_positives <- c(rep(1, 100), rep(0, 900))
+
+metrics <- apply(results, 2, function(q_values) {
+  predictions <- q_values < alpha
+  tp <- sum(predictions[1:100])
+  fp <- sum(predictions[101:1000])
+  fn <- 100 - tp
+  tn <- 900 - fp
+  power <- tp / (tp + fn)
+  fdr <- ifelse(tp + fp > 0, fp / (tp + fp), 0)
+  fpr <- fp / (fp + tn)
+  accuracy <- (tp + tn) / 1000
+  precision <- ifelse(tp + fp > 0, tp / (tp + fp), 0)
+  
+  c(power = power, fdr = fdr, fpr = fpr, accuracy = accuracy, precision = precision)
+})
+```
+
+```{r}
+metrics <- t(metrics)
+colnames(metrics) <- c("Power", "FDR", "FPR", "Accuracy", "Precision")
+metrics
+```
