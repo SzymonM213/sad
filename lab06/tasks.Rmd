@@ -1,0 +1,152 @@
+### Task 1
+
+```{r}
+library(ggplot2)
+data(iris)
+iris$Skala <- 'Petal.Length mierzone w centymetrach'
+iris_km <- iris
+iris_km$Petal.Length <- iris_km$Petal.Length/10000
+iris_km$Skala <- 'Petal.Length mierzone w kilometrach'
+iris_both <- rbind(iris, iris_km)
+ggplot(iris_both, aes(y=Sepal.Length, x=Petal.Length, col=Species)) + 
+  geom_point() + theme_minimal() + facet_wrap(.~Skala, scales='fixed')
+```
+
+```{r}
+iris[,1:4] <- apply(iris[,1:4], 2, function(x) x - mean(x))  
+iris[,1:4] <- apply(iris[,1:4], 2, function(x) x / sd(x))
+ggplot(iris, aes(x=Petal.Length, y=Sepal.Length, col=Species)) + geom_point() + theme_minimal()
+```
+
+```{r}
+library(dplyr)
+
+wine[, -1]
+```
+
+```{r}
+
+wine[,-1] <- apply(wine[,-1], 2, function(x) x - mean(x))
+wine[,-1] <- apply(wine[,-1], 2, function(x) x / sd(x))
+
+wine$Quality <- as.factor(wine$Quality)
+```
+
+### Task 2
+
+```{r}
+x <- c(0.42, 0.03, -0.90, 0.15, -1.25, -0.15, -0.01, 0.73, 0.90, -0.82, -0.69)
+
+distances <- apply(wine[,-1], 1, function(y) sqrt(sum((x-y)^2)))
+k <- 3
+najblizsze_wiersze <- order(distances)[1:k]
+
+najblizsze_klasy <- wine[najblizsze_wiersze, 1]
+
+czestosc_klas <- table(najblizsze_klasy)
+czestosc_klas
+```
+
+```{r}
+najczestsza_klasa <- which.max(czestosc_klas)
+najczestsza_klasa
+```
+
+```{r}
+najczestsza_klasa <- levels(wine$Quality)[najczestsza_klasa]
+```
+
+### Task 3
+
+```{r}
+indeksy_testowe <- sample(1:nrow(wine), 480, replace=F)
+zbior_testowy <- wine[indeksy_testowe, ]
+zbior_treningowy <- wine[-indeksy_testowe, ]
+
+library(class)
+library(ggplot2)
+
+calc_accuracy <- function(n) {
+  mean(knn(zbior_treningowy[,-1], zbior_testowy[,-1], zbior_treningowy[,1], k=n)==zbior_testowy[,1])
+}
+
+max_k = 15
+
+accuracies <- data.frame(x = 1:max_k, y = sapply(1:max_k, calc_accuracy))
+
+ggplot(accuracies, aes(x = x, y = y)) +
+  geom_point() +
+  scale_x_continuous(breaks = accuracies$x)
+
+```
+
+### Task 4
+
+```{r}
+conf_matrix = matrix(c(99, 1, 0, 0), nrow=2)
+
+print(apply(conf_matrix, 2, sum))
+
+safe_division <- function(numerator, denominator) {
+  if (denominator == 0) {
+    return(0)  # Return NA if division by zero
+  } else {
+    return(numerator / denominator)
+  }
+}
+
+print(conf_matrix)
+
+precision_A <- safe_division(conf_matrix[1, 1], sum(conf_matrix[1]))
+recall_A <- safe_division(conf_matrix[1, 1], sum(conf_matrix[,1]))
+
+precision_B <- safe_division(conf_matrix[2, 2], sum(conf_matrix[2]))
+recall_B <- safe_division(conf_matrix[2, 2], sum(conf_matrix[,2]))
+```
+
+### Task 5
+
+```{r}
+k_values <- c(2, 6, 9)
+zbior_testowy <- wine[indeksy_testowe, ]
+zbior_treningowy <- wine[-indeksy_testowe, ]
+
+evaluate_knn <- function(k) {
+  predictions <- knn(zbior_treningowy[,-1], zbior_testowy[,-1], zbior_treningowy[,1], k=n)
+
+  confusion_matrix <- table(Predicted = predictions, Actual = zbior_testowy[,1])
+  
+  precision <- diag(confusion_matrix) / rowSums(confusion_matrix)
+  recall <- diag(confusion_matrix) / colSums(confusion_matrix)
+  
+  return(data.frame(
+    k = k,
+    Class = names(precision),
+    Precision = precision,
+    Recall = recall
+  ))
+}
+
+results_k3 <- evaluate_knn(k = 2)
+results_k5 <- evaluate_knn(k = 6)
+results_k7 <- evaluate_knn(k = 9)
+
+# Połączenie wyników w jeden data frame
+results <- rbind(results_k3, results_k5, results_k7)
+
+# Wizualizacja wyników
+ggplot(results, aes(x = k, group = Class)) +
+  geom_line(aes(y = Precision, color = Class), linetype = "solid") +
+  geom_line(aes(y = Recall, color = Class), linetype = "dashed") +
+  geom_point(aes(y = Precision, color = Class)) +
+  geom_point(aes(y = Recall, color = Class)) +
+  labs(
+    title = "Precision and Recall for Different k Values",
+    x = "k (Number of Neighbors)",
+    y = "Metric Value",
+    color = "Class"
+  ) +
+  theme_minimal()
+
+
+```
