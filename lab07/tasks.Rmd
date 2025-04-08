@@ -1,0 +1,174 @@
+### Task 1
+
+```{r}
+str(ais)
+```
+
+```{r}
+sapply(ais, function(x) {
+  if (is.numeric(x)) {
+    list(mean = mean(x, na.rm = TRUE), variance = var(x, na.rm = TRUE))
+  }
+})
+```
+
+```{r}
+numeric_vars <- ais[sapply(ais, is.numeric)]
+cor_matrix <- cor(numeric_vars, use = "complete.obs")
+
+cor_values <- as.data.frame(as.table(cor_matrix))
+cor_values <- cor_values[cor_values$Var1 != cor_values$Var2, ]
+
+print(min(cor_values$Freq))
+
+most_correlated <- cor_values[which.max(cor_values$Freq), ]
+least_correlated <- cor_values[which.min(abs(cor_values$Freq)), ]
+strongest_negative_correlation <- cor_values[which.min(cor_values$Freq), ]
+
+list(
+  most_correlated = most_correlated,
+  least_correlated = least_correlated,
+  strongest_negative_correlation
+)
+```
+
+```{r}
+library(GGally)
+ggpairs(ais, aes(col=Sex), columns=c(9, 10, 5, 13))  
+```
+
+### Task 2
+
+```{r}
+ais <- read.table("ais (1).txt", header = T)
+attach(ais)
+mean(Ht)
+```
+
+```{r}
+library(ggplot2)
+ggplot(ais, aes(x=Ht, y=Wt)) + geom_point()
+```
+
+```{r}
+beta1 <- sum((Ht-mean(Ht))*(Wt - mean(Wt)))/sum((Ht - mean(Ht))^2)
+beta0 <- mean(Wt) - beta1*mean(Ht)
+```
+
+```{r}
+ggplot(ais, aes(x=Ht, y=Wt)) + geom_point() + geom_abline(slope=beta1, intercept=beta0, col='red')
+```
+
+```{r}
+predykcja_Wt <- beta0 + beta1 * Ht 
+r <- Wt - predykcja_Wt
+qqnorm(r)
+```
+
+```{r}
+sigma2 <- sum(r^2)/(length(Ht)-2)  # u nas n = dlugosc wektora Ht, k = 1
+sigma <- sqrt(sigma2)
+```
+
+```{r}
+X <- cbind(1, Ht)
+XTX <- t(X) %*% X  
+e_1 <- c(0, 1)
+w <- solve(XTX, e_1)
+```
+
+```{r}
+statystyka_t <- beta1/(sigma*sqrt(w[2]))
+p_wartosc <- 2*pt(-statystyka_t, length(Ht)-2)
+```
+
+```{r}
+alpha <- 0.05
+z <- qnorm(1 - alpha/2)
+c <- z * sqrt(w[2]) * sigma
+przedzial_ufnosci <- c(beta1 - c, beta1 + c)
+```
+
+```{r}
+detach(ais)
+```
+
+```{r}
+model <- lm(Wt ~ Ht, ais)
+```
+
+```{r}
+summary(model)
+```
+
+```{r}
+confint(model)
+```
+
+```{r}
+predict(model, data.frame('Ht'=180), interval='prediction')
+```
+
+```{r}
+przedzial_ufnosci <- predict(model, data.frame('Ht'=seq(120, 230, by=1)), interval='prediction')
+przedzial_ufnosci <- as.data.frame(przedzial_ufnosci)
+przedzial_ufnosci$Wt <- seq(120, 230, by=1)
+
+ggplot(ais, aes(x=Ht, y=Wt)) + geom_point() + geom_abline(slope=beta1, intercept=beta0, col='red') + geom_ribbon(aes(x=Wt, ymin=lwr, ymax=upr), data=przedzial_ufnosci, alpha=0.1)
+```
+
+### Task 3
+
+```{r}
+model <- lm(Wt ~ . - Sex - Sport, ais)
+```
+
+```{r}
+summary(model)
+```
+
+### Task 4
+
+```{r}
+model <- lm(Wt ~ . - Sport, ais)
+```
+
+```{r}
+summary(model)
+```
+
+### Task 5
+
+```{r}
+data(anscombe)
+```
+
+```{r}
+model1 <- lm(y1 ~ x1, anscombe)
+model2 <- lm(y2 ~ x2, anscombe)
+model3 <- lm(y3 ~ x3, anscombe)
+model4 <- lm(y4 ~ x4, anscombe)
+```
+
+```{r}
+summary(model1)$r.squared
+summary(model2)$r.squared
+summary(model3)$r.squared
+summary(model4)$r.squared
+```
+
+```{r}
+par(mfrow = c(2, 2))  # Arrange plots in a 2x2 grid
+
+plot(anscombe$x1, anscombe$y1, main = "y1 ~ x1", xlab = "x1", ylab = "y1")
+abline(model1, col = "red")
+
+plot(anscombe$x2, anscombe$y2, main = "y2 ~ x2", xlab = "x2", ylab = "y2")
+abline(model2, col = "blue")
+
+plot(anscombe$x3, anscombe$y3, main = "y3 ~ x3", xlab = "x3", ylab = "y3")
+abline(model3, col = "green")
+
+plot(anscombe$x4, anscombe$y4, main = "y4 ~ x4", xlab = "x4", ylab = "y4")
+abline(model4, col = "purple")
+```
