@@ -131,22 +131,7 @@ results_k3 <- evaluate_knn(k = 2)
 results_k5 <- evaluate_knn(k = 6)
 results_k7 <- evaluate_knn(k = 9)
 
-# Połączenie wyników w jeden data frame
 results <- rbind(results_k3, results_k5, results_k7)
-
-# Wizualizacja wyników
-ggplot(results, aes(x = k, group = Class)) +
-  geom_line(aes(y = Precision, color = Class), linetype = "solid") +
-  geom_line(aes(y = Recall, color = Class), linetype = "dashed") +
-  geom_point(aes(y = Precision, color = Class)) +
-  geom_point(aes(y = Recall, color = Class)) +
-  labs(
-    title = "Precision and Recall for Different k Values",
-    x = "k (Number of Neighbors)",
-    y = "Metric Value",
-    color = "Class"
-  ) +
-  theme_minimal()
 
 
 ```
