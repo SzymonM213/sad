@@ -1,0 +1,94 @@
+### Task 1
+
+```{r}
+dane <- read.table("pozyczka.csv", sep=";", header=T)
+head(dane)
+```
+
+```{r}
+dane$plec <- as.factor(dane$plec)
+dane$stan_cyw <- as.factor(dane$stan_cyw)
+dane$samozatr <- as.factor(dane$samozatr)
+dane$historia <- as.factor(dane$historia)
+dane$miejsce_zam <- as.factor(dane$miejsce_zam)
+dane$pozyczka <- as.factor(dane$pozyczka)
+```
+
+```{r}
+summary(dane$pozyczka)
+```
+
+```{r}
+100*sum(dane$pozyczka==1)/nrow(dane)
+```
+
+```{r}
+model <- glm(pozyczka ~ plec + stan_cyw + samozatr + historia + miejsce_zam + dochod + suma_poz, dane, family = binomial)
+summary(model)
+```
+
+```{r}
+confint(model)
+```
+
+```{r}
+prawdopodobienstwa <- predict(model, type = "response")
+```
+
+```{r}
+library(ggplot2)
+ggplot(data = data.frame('P' = prawdopodobienstwa, 'Pozyczka' = dane$pozyczka)) + geom_boxplot(aes(x = Pozyczka, y = P)) + theme_minimal()
+```
+
+```{r}
+predykcja <- ifelse(prawdopodobienstwa  > 0.5, "1", "0")
+```
+
+```{r}
+conf.matrix <- table('Pred'=predykcja, 'True'=dane$pozyczka)
+conf.matrix
+```
+
+```{r}
+accuracy <- sum(diag(conf.matrix))/sum(conf.matrix)  # suma wartości na przekątnej dzielona przez sumę wszystkich wartości macierzy
+sensitivity <- conf.matrix[2, 2]/(conf.matrix[1,2]+conf.matrix[2,2])
+specificity <- conf.matrix[1, 1]/(conf.matrix[1,1]+conf.matrix[2,1])
+precision <- conf.matrix[2, 2]/(conf.matrix[2,1] + conf.matrix[2, 2])
+c('Dokładność' = accuracy, 'Czułość' = sensitivity, 'Specyficzność' = specificity, "Precyzja" = precision)
+```
+
+```{r}
+progi <- seq(0.4, 0.65, length.out = 20)
+```
+
+```{r}
+macierz_predykcji <- sapply(progi, function(p) prawdopodobienstwa > p) 
+```
+
+```{r}
+P <- sum(dane$pozyczka == 1)  
+N <- sum(dane$pozyczka == 0)
+TPR <- apply(macierz_predykcji, 2, function(x) sum(x & dane$pozyczka==1))/P
+FPR <- apply(macierz_predykcji, 2, function(x) sum(x & dane$pozyczka==0))/N
+```
+
+```{r}
+ggplot(data.frame('TPR' = TPR, 'FPR' = FPR, 'p' = progi)) + geom_line(aes(x=FPR, y=TPR)) + geom_abline(slope=1, intercept=0, alpha=0.2) + theme_minimal() 
+```
+
+```{r}
+ggplot(data.frame('TPR' = TPR, 'FPR' = FPR, 'p' = progi)) + geom_line(aes(x=FPR, y=TPR)) + geom_abline(slope=1, intercept=0, alpha=0.2) + theme_minimal() + geom_text(aes(x=FPR, y=TPR + 0.05, label=round(p, 2)))
+```
+
+### Task 2
+
+```{r}
+data("iris")
+```
+
+```{r}
+sample(1:nrow(iris), 480, replace=F)
+```
+
+```{)}
+```
