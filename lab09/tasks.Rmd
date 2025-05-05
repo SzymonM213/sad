@@ -82,13 +82,97 @@ ggplot(data.frame('TPR' = TPR, 'FPR' = FPR, 'p' = progi)) + geom_line(aes(x=FPR,
 
 ### Task 2
 
+Załaduj dane `iris`. Podziel dane na zbiór treningowy i testowy. Wykorzystaj w tym celu funkcję `sample.split` z pakietu `caTools`, która zadba o to, aby w obu zbiorach znalazły się podobne proporcje różnych gatunków. Jest to o tyle ważne, że jeśli do obu zbiorów przypisujemy obserwacje całkowicie losowo, to może się zdarzyć, że w zbiorze testowym dostaniemy wyłącznie jeden gatunek. To z kolei sprawi, że nasz błąd testowy nie będzie odawał rzeczywistej jakości klasyfikatora.
+
+Dodaj do zbioru treningowego trzy kolumny binarne (czyli factory o dwóch poziomach), gdzie i-ta kolumna będzie zawierała informację czy obserwacja należy do i-tego gatunku, czy nie. Utwórz trzy modele logistyczne objaśniające te nowe kolumny za pomocą zmiennej Sepal.Length. Alternatywnie, zamiast dodawać trzy kolumny do tabeli `iris`, możesz utworzyć trzy nowe ramki danych. Możesz też wybrać inny zestaw zmiennych objaśniających.
+
+Dla każdej obserwacji ze zbioru testowego oblicz, korzystając z funkcji `predict()`, wektory prawdopodobieństw przynależności do poszczególnych gatunków. Przypisz każdej obserwacji gatunek o najwyższym prawdopodobieństwie. Może się tu przydać funkcja `max.col`. Utwórz macierz błędu. Jaka jest ogólna dokładność klasyfikatora? Który gatunek jest najprecyzyjniej klasyfikowany? Możesz również sprawdzić, co się stanie, jeśli dodamy do modelu więcej zmiennych objaśniających.
+
 ```{r}
 data("iris")
 ```
 
 ```{r}
-sample(1:nrow(iris), 480, replace=F)
+library(caTools)
+train = sample.split(iris$Species, SplitRatio = 0.8)
+
+train_set = iris[train, ]
+test_set = iris[!train, ]
 ```
 
-```{)}
+```{r}
+iris$Setosa = iris$Species == 'setosa'
+iris$Virginica = iris$Species == 'virginica'
+iris$Versicolor = iris$Species == 'versicolor'
+```
+
+```{r}
+head(iris)
+```
+
+```{r}
+model_setosa <- glm(Setosa ~ Sepal.Length, train_set, family = binomial)
+model_virginica <- glm(Virginica ~ Sepal.Length, train_set, family = binomial)
+model_versicolor <- glm(Versicolor ~ Sepal.Length, train_set, family = binomial)
+```
+
+```{r}
+species = c('setosa', 'virginica', 'versicolor')
+probabilities = c(predict(model_setosa, test_set, type = "response"),
+                  predict(model_virginica, test_set, type = "response"), 
+                  predict(model_versicolor, test_set, type = "response"))
+
+probabilities = matrix(probabilities, ncol = 3)
+print(probabilities)
+
+```
+
+```{r}
+class = species[max.col(probabilities)]
+```
+
+```{r}
+table('Predicted' = class, 'True' = iris[!train, 'Species'])
+```
+
+### Task 3
+
+Losowo podziel zbiór danych o pożyczkach na dwie połowy. Na pierwszej połowie zbuduj model przewidujący zmienną pozyczka w oparciu o liniową analizę dyskryminacyjną (najlepiej za pomocą funkcji `lda` z biblioteki `MASS`). Obejrzyj otrzymany model, zobacz jakie informacje zawiera. Następnie:
+
+-   Wykonaj predykcję dla drugiej połowy danych i policz średni błąd.
+
+-   Powtórz liczenie średniego błędu 100 razy, za każdym razem na nowo losując podział na połowy. Możesz w tym zadaniu wykorzystać pętlę `for`. Pusty wektor długości 100 utworzysz za pomocą `numeric(100)`.
+
+-   Zbadaj rozkład błędu.
+
+-   Policz macierze kowariancji predyktorów dla wszystkich obserwacji na raz oraz dla każdej z klas (”1 – spłacono pożyczkę” i ”0 – nie spłacono”) osobno. Jak sądzisz, jaki model byłby sensowniejszy - LDA czy QDA? Jeśli nie jesteś pewien, możesz przeprowadzić test równości macierzy kowariancji korzystając z funkcji `boxM` z pakietu `heplots`.
+
+-   Dla chętnych: Wykonaj kwadratową analizę dyskryminacyjną na powyższych danych (`qda` z biblioteki `MASS`). Wykorzystaj losową połowę danych do trenowania; wykonaj predykcję na drugiej połowie. Oblicz średni błąd klasyfikacji treningowy i testowy.
+
+```{r}
+dane <- read.table("pozyczka.csv", sep=";", header=T)
+```
+
+```{r}
+library(MASS)
+
+bledy <- numeric(100)
+
+for (i in 1:100) {
+  train <- sample(1:nrow(dane), nrow(dane)/2)
+  model <- lda(pozyczka ~ ., dane, subset = train)
+  pred <- predict(model, dane[-train, ])$class
+  bledy[i] <- mean(pred != dane$pozyczka[-train])
+}
+```
+
+```{r}
+hist(bledy, main="Histogram błędów", xlab="Błąd", ylab="Liczba obserwacji")
+```
+
+```{r}
+library(heplots)
+cov_all <- cov(dane[, -1])
+cov_1 <- cov(dane[dane$pozyczka == 1, -1])
+cov_0 <- cov(dane[dane$pozyczka == 0, -1])
 ```
