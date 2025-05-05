@@ -1,0 +1,110 @@
+### Task 1
+
+```{r}
+library(ggplot2)
+
+bats <- read.csv('bats.csv', header=T)
+ggplot(bats, aes(x=days, y=forearm.length)) + geom_point() + theme_minimal()
+```
+
+```{r}
+ggplot(bats, aes(x=log(days), y=forearm.length)) + geom_point() + theme_minimal()
+```
+
+```{r}
+library(MASS)
+bc <- boxcox(forearm.length~days, data=bats, lambda=seq(0, 4, by=1/10))
+```
+
+```{r}
+best_lambda <- bc$x[which.max(bc$y)]
+```
+
+```{r}
+bats$forearm_boxcox <- (bats$forearm.length**best_lambda - 1)/best_lambda
+ggplot(bats, aes(x=days, y = forearm_boxcox)) + geom_point() + theme_minimal()
+```
+
+```{r}
+bats$log_days <- log(bats$days)
+model <- lm(forearm.length ~ log_days, data=bats)
+summary(model)
+```
+
+```{r}
+predykcja <- data.frame('days'=bats$days, 'forearm.length' = 9.78 + 6.70*log(bats$days))
+ggplot() + geom_point(aes(x=days, y=forearm.length), data=bats) + geom_line(aes(x=days, y=forearm.length), data=predykcja, col='red') + theme_minimal()
+```
+
+```{r}
+plot(model)
+```
+
+```{r}
+przedzialy <- predict(model, data.frame('log_days'=log(1:50)), interval='prediction')
+# Poniewaz funkcja predict zwraca macierz, a ggplot wymaga data.frame, to rzutujemy zmienną na odpowiedni typ:
+przedzialy <- data.frame(przedzialy)
+przedzialy$days <- 1:50
+ggplot() + geom_point(aes(x=days, y=forearm.length), data=bats) + geom_line(aes(x=days, y=forearm.length), data=predykcja, col='red') + geom_ribbon(aes(x=days, ymin=lwr, ymax=upr), data=przedzialy, alpha=0.2, fill='orange') +  theme_minimal() 
+```
+
+### Task 2
+
+Załaduj zbiór danych dotyczący sportowców, który analizowaliśmy na
+poprzednich zajęciach. Utwórz model liniowy wyjaśniający zmienność wagi
+(Wt) w zależności od wysokości (Ht) i przeprowadź diagnostykę modelu.
+Czy założenia pozwalające na sensowną estymację parametrów β są spełnione? Co z założeniami, które pozwalają na ocenę tego, czy na podstawie danych możemy stwierdzić, że β≠0?
+Patrząc na odstępstwa od założeń LINE, jakich efektów możemy się
+spodziewać, jeśli chodzi o przedziały ufności dla predykcji? Zweryfikuj
+swoje przypuszczenia, tworząc wykres zależności wagi od wysokości, na
+którym zaznaczysz prostą regresji i przedziały ufności.
+
+```{r}
+ais <- read.delim('ais.txt', header=T)
+```
+
+```{r}
+model <- lm(Wt ~ Ht, ais)
+summary(model)
+```
+
+```{r}
+summary(ais)
+```
+
+```{r}
+predykcja <- data.frame('Ht' = ais$Ht, 'Wt' = 1.11712 * ais$Ht - 126.18901)
+```
+
+```{r}
+przedzialy <- predict(model, data.frame('Ht'=148:210), interval='prediction')
+# Poniewaz funkcja predict zwraca macierz, a ggplot wymaga data.frame, to rzutujemy zmienną na odpowiedni typ:
+przedzialy <- data.frame(przedzialy)
+przedzialy$Ht <- 148:210
+ggplot() + geom_point(aes(x=Ht, y=Wt), data=ais) + geom_line(aes(x=Ht, y=Wt), data=predykcja, col='red') + geom_ribbon(aes(x=Ht, ymin=lwr, ymax=upr), data=przedzialy, alpha=0.2, fill='orange') +  theme_minimal() 
+```
+
+### Task 3
+
+```{r}
+model <- lm(Wt ~ Ht, ais)
+```
+
+```{r}
+predykcja <- data.frame('Wt' = model$fitted.values, 'Ht' = ais$Ht)
+przedzialy <- predict(model, data.frame('Ht'=ais$Ht), interval='prediction')
+przedzialy <- data.frame(przedzialy)
+przedzialy$Wt <- przedzialy$fit
+przedzialy$Ht = ais$Ht
+```
+
+```{r}
+
+ggplot() + 
+  geom_ribbon(aes(x=ais$Ht, ymin=lwr, ymax=upr), data=przedzialy, alpha=0.2, fill='orange') + 
+  geom_segment(aes(x = ais$Ht, xend = ais$Ht, y = ais$Wt, yend = predykcja$Wt)) +
+  geom_label(aes(x=Ht, y=Wt, label = 1:nrow(ais)), data=ais) + 
+  geom_line(aes(x=Ht, y=Wt), data=predykcja, col='red') +
+  theme_minimal() 
+  
+```
