@@ -1,0 +1,97 @@
+### Task 1
+
+```{r}
+library(MASS)
+?biopsy
+dim(biopsy)
+```
+
+```{r}
+head(biopsy)
+```
+
+```{r}
+biopsy <- na.omit(biopsy)
+dim(biopsy)
+```
+
+```{r}
+levels(biopsy$class)
+```
+
+```{r}
+table(biopsy$class)
+```
+
+```{r}
+model <- glm(class ~ . - ID, biopsy, family=binomial)
+summary(model)
+```
+
+```{r}
+malignant_probability <- predict(model, biopsy, 'response')
+predicted_class <- rep('benign', nrow(biopsy))  
+predicted_class[malignant_probability > 0.5] <- 'malignant'
+mean(predicted_class != biopsy$class)
+```
+
+```{r}
+biopsy$ID <- NULL
+```
+
+```{r}
+podzial <- cut(1:nrow(biopsy), 10, labels = F)
+podzial <- sample(podzial) 
+```
+
+```{r}
+bledy.kfold <- numeric(10)  # tu zapiszemy bledy testowe
+bledy.treningowe <- numeric(10)  # a tu bledy treningowe
+for (i in 1:10) {
+  treningowe <- which(podzial != i)  # wektor zawierający indeksy obserwacji ze zbioru treningowego
+  model <- glm(class ~ ., biopsy, family=binomial, subset = treningowe)  # model zbudowany na danych treningowych
+  
+  predykcja <- predict(model, biopsy, 'response')  # robimy predykcje na całych danych
+  predykcja <- ifelse(predykcja > 0.5, 'malignant', 'benign')  # zamieniamy prawdopodobieństwa na klasy
+  
+  predykcja_treningowa <- predykcja[treningowe]  # wybieramy predykcje odpowiadające zbiorowi treningowemu
+  predykcja_testowa <- predykcja[-treningowe]
+  
+  # poniżej łączymy dwa typy indeksowania tabeli biopsy: indeksowanie wektorem całkowitoliczbowym oraz przez nazwę kolumny
+  bledy.kfold[i] <- mean(predykcja_testowa != biopsy[-treningowe, 'class'])  
+  bledy.treningowe[i] <- mean(predykcja_treningowa != biopsy[treningowe, 'class'])  
+}
+```
+
+```{r}
+library(ggplot2)
+
+dane_do_wykresu <- data.frame('Fold' = as.integer(rep(1:10, 2)),
+                              'Blad' = c(bledy.kfold, bledy.treningowe),
+                              'Typ' = rep(c('Testowy', 'Treningowy'), each=10))
+ggplot(dane_do_wykresu,
+       aes(x=Fold, y=Blad, color=Typ)) + 
+  ggtitle('Porównanie błędu treningowego i testowego', 
+          subtitle = paste0('Średni błąd testowy = ', round(mean(bledy.kfold), 3), ' treningowy = ', round(mean(bledy.treningowe), 3))) + 
+  geom_line() + geom_point() + scale_x_continuous(breaks = c(1,3,5,7,9)) +  theme_minimal() 
+```
+
+```{r}
+library(caret)
+
+train_control <- trainControl(method='cv', number=10)
+kfold_train <- train(class~., data=biopsy, 
+                     method='glm', family=binomial, trControl=train_control)
+
+print(kfold_train)
+```
+
+### Task 2
+
+```{r}
+?biopsy
+
+full_model <- lm(class ~ ., data = biopsy)
+step_model <- stepAIC(full_model, direction = "both")
+
+```
