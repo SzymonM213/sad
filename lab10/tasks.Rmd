@@ -13,6 +13,7 @@ head(biopsy)
 ```{r}
 biopsy <- na.omit(biopsy)
 dim(biopsy)
+biopsy$class <- as.factor(biopsy$class)
 ```
 
 ```{r}
@@ -24,7 +25,7 @@ table(biopsy$class)
 ```
 
 ```{r}
-model <- glm(class ~ . - ID, biopsy, family=binomial)
+model <- glm(class ~ ., biopsy, family=binomial)
 summary(model)
 ```
 
@@ -89,9 +90,98 @@ print(kfold_train)
 ### Task 2
 
 ```{r}
-?biopsy
+data(biopsy, package="MASS")
+biopsy <- na.omit(biopsy)
+biopsy$class <- as.factor(biopsy$class)
 
-full_model <- lm(class ~ ., data = biopsy)
-step_model <- stepAIC(full_model, direction = "both")
+full_model <- glm(class ~ . - ID, data = biopsy, family = binomial)
+model_aic <- stepAIC(full_model, direction = "both", trace = FALSE)
+model_bic <- stepAIC(full_model, direction = "both", k = log(nrow(biopsy)), trace = FALSE)
 
+cv_results <- function(model, data, target) {
+  train_control <- trainControl(method = 'cv', number=10)
+  train_model <- train(formula(model), data = data, method = "glm", trControl=train_control)
+}
+
+cv_full <- cv_results(full_model, biopsy, class)
+cv_aic <- cv_results(model_aic, biopsy, class)
+cv_bic <- cv_results(model_bic, biopsy, class)
+
+print(mean(cv_full$results$Accuracy))
+print(mean(cv_aic$results$Accuracy))
+print(mean(cv_bic$results$Accuracy))
+```
+
+### Task 3
+
+```{r}
+dane <- read.table("walter.csv")
+print(dane)
+```
+
+```{r}
+n <- 1000
+
+bootstrap <- replicate(n, {
+  indices <- sample(1:length(dane$V1), size = length(dane$V1), replace = TRUE)
+  mean(dane$V1[indices])
+})
+
+print(mean(bootstrap))
+print(var(bootstrap))
+
+```
+
+```{r}
+library(boot)
+
+srednia <- function(data, indices) {
+  return(mean(data[indices]))
+}
+
+boot_result <- boot(data = dane$V1, statistic = srednia, R = 1000)
+print(mean(boot_result$t))
+print(var(boot_result$t))
+```
+
+### Task 4
+
+```{r}
+mu <- 75
+cukier <- dane$V1
+
+przesuniecie <- cukier - mean(cukier) + mu
+```
+
+```{r}
+statystyka_t <- function(dane, indeksy) {
+  probka <- dane[indeksy]
+  n <- length(probka)
+  srednia <- mean(probka)
+  odchylenie <- sd(probka)
+  t <- sqrt(n) * (srednia - mu) / odchylenie
+  return(t)
+}
+
+r <- 1000
+boot_result <- boot(data = przesuniecie, statistic = statystyka_t, R = r)
+
+n <- length(cukier)
+srednia_obserwowana <- mean(cukier)
+odchylenie_obserwowane <- sd(cukier)
+t_obserwowane <- sqrt(n) * (srednia_obserwowana - mu) / odchylenie_obserwowane
+
+p_value <- mean(boot_result$t > t_obserwowane)
+
+cat("Statystyka t dla oryginalnych danych:", t_obserwowane, "\n")
+cat("P-wartość (bootstrap):", p_value, "\n")
+test_t <- t.test(cukier, mu = mu, alternative = "greater")
+
+cat("Statystyka t (test t Studenta):", test_t$statistic, "\n")
+cat("P-wartość (test t Studenta):", test_t$p.value, "\n")
+
+hist(boot_result$t, breaks = 30, main = "Rozkład statystyki t (bootstrap)",
+     xlab = "Statystyka t", col = "lightblue", border = "black")
+abline(v = t_obserwowane, col = "red", lwd = 2, lty = 2)
+legend("topright", legend = c("t obserwowane"), col = "red", lty = 2, lwd = 2)
 ```
