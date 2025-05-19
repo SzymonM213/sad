@@ -1,0 +1,89 @@
+### Task 1
+
+```{r}
+library(MASS)
+
+data(Boston, package="MASS")
+```
+
+```{r}
+B <- c(crim=1.52274943515658, zn=-2.79081122064963, indus=0, 
+       nox=1.4332089680247, rm=1.03212527744472, age=0, 
+       dis=2.75923800934106, tax=2.43884606240317, ptratio=0, 
+       black=-0.371096117421985, lstat=1.09251574007794, medv=0)
+
+eps <- rnorm(nrow(Boston))
+```
+
+```{r}
+Boston <- Boston[, names(B)]
+```
+
+```{r}
+head(Boston)
+```
+
+```{r}
+Y = as.matrix(Boston[, names(B)]) %*% B + eps
+Boston$Y = Y
+```
+
+```{r}
+test_indices <- sample(1:nrow(Boston), size = 0.4 * nrow(Boston))
+X_test <- Boston[test_indices, names(B)]
+Y_test <- Boston[test_indices, 'Y']
+X_train <- Boston[-test_indices, names(B)]
+Y_train <- Boston[-test_indices, 'Y']
+```
+
+```{r}
+model <- lm(Y ~ ., Boston, subset = -test_indices)
+```
+
+```{r}
+summary(model)
+```
+
+```{r}
+pred <- predict(model, newdata = X_test)
+```
+
+```{r}
+mse <- mean((Y_test - pred)^2)
+cat("mse: ", mse)
+```
+
+```{r}
+min_mse <- mean((Y_test - as.matrix(X_test) %*% B)^2)
+cat("min mse:", min_mse)
+```
+
+```{r}
+model_aic <- stepAIC(model, direction = "both", trace = FALSE)
+model_bic <- stepAIC(model, direction = "both", k = log(nrow(biopsy)), trace = FALSE)
+```
+
+```{r}
+summary(model_aic)
+```
+
+```{r}
+summary(model_bic)
+```
+
+```{r}
+library(glmnet)
+```
+
+```{r}
+simple.cv <- cv.glmnet(x=as.matrix(X_train),
+                       y=Y_train,
+                       standardize=FALSE,
+                       tresh=1e-16,
+                       alpha=1
+                       )
+```
+
+```{r}
+plot(simple.cv)
+```
