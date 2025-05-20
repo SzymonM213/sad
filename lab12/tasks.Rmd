@@ -1,0 +1,109 @@
+### Task 1
+
+```{r}
+library(MASS)
+library(rpart)
+biopsy$ID <- NULL  
+biopsy <- na.omit(biopsy)
+drzewo <- rpart(class~., data=biopsy, method='class')
+plot(drzewo, main="Klasyfikacja złośliwości nowotworu")
+text(drzewo, use.n=TRUE, all=T, cex=.8)
+```
+
+```{r}
+plotcp(drzewo)
+```
+
+```{r}
+przyciete_drzewo <- prune(drzewo, cp=0.037)
+plot(przyciete_drzewo, main="Klasyfikacja złośliwości nowotworu")
+text(przyciete_drzewo, use.n=TRUE, all=T, cex=.8)
+```
+
+```{r}
+library(caret)
+
+walidacja_caret <- train(class ~ ., 
+                          data=biopsy, 
+                          method="rpart", 
+                          trControl = trainControl(method = "cv", number=10),
+                         tuneLength=10)  # ten parametr kontroluje liczbe wartosci parametru cp do przetestowania
+walidacja_caret
+```
+
+### Task 2
+
+```{r}
+train_indices <- sample(1:nrow(biopsy), 0.8 * nrow(biopsy))
+train_set <- biopsy[train_indices, ]
+test_set <- biopsy[-train_indices, ]
+```
+
+```{r}
+drzewo <- rpart(class~., data=train_set, method='class')
+```
+
+```{r}
+preds <- predict(drzewo, newdata=test_set, type='prob')[,2]
+```
+
+```{r}
+threshs = seq(0, 1, 0.01)
+```
+
+```{r}
+pred_classes <- ifelse(preds  > 0.5, "benign", "malignant")
+conf.matrix <- table('Pred'=pred_classes, 'True'=test_set$class)
+print(conf.matrix)
+```
+
+```{r}
+calc_roc <- function(thresh) {
+  pred_classes <- ifelse(preds  > thresh, "benign", "malignant")
+  conf.matrix <- table('Pred'=pred_classes, 'True'=test_set$class)
+  return(conf.matrix)
+}
+
+calc_conf_matrix(0.5)
+```
+
+```{r}
+
+TPR <- c()
+FPR <- c()
+for(thresh in threshs) {
+  conf.matrix <- calc_roc(thresh)
+  
+  # Ensure both classes are present
+  preds_levels <- c("benign", "malignant")
+  true_levels <- c("benign", "malignant")
+  conf.matrix <- conf.matrix[preds_levels, true_levels, drop=FALSE]
+  
+  TP <- ifelse(!is.na(conf.matrix["benign", "benign"]), conf.matrix["benign", "benign"], 0)
+  FP <- ifelse(!is.na(conf.matrix["benign", "malignant"]), conf.matrix["benign", "malignant"], 0)
+  FN <- ifelse(!is.na(conf.matrix["malignant", "benign"]), conf.matrix["malignant", "benign"], 0)
+  TN <- ifelse(!is.na(conf.matrix["malignant", "malignant"]), conf.matrix["malignant", "malignant"], 0)
+  
+  TPR <- c(TPR, TP / (TP + FN))
+  FPR <- c(FPR, FP / (FP + TN))
+}
+
+```
+
+```{r}
+print(FPR)
+```
+
+```{r}
+print(TPR)
+```
+
+```{r}
+roc_df <- data.frame(FPR=FPR, TPR=TPR)
+ggplot(roc_df, aes(x=FPR, y=TPR)) +
+  geom_line() +
+  labs(title="Krzywa ROC", x="Falszywie pozytywne", y="Prawdziwie pozytywne")
+```
+
+```         
+```
