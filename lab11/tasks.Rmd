@@ -77,9 +77,9 @@ library(glmnet)
 
 ```{r}
 simple.cv <- cv.glmnet(x=as.matrix(X_train),
-                       y=Y_train,
-                       standardize=FALSE,
-                       tresh=1e-16,
+                       y=as.numeric(Y_train),
+                       standardize=F,
+                       thresh=1e-16,
                        alpha=1
                        )
 ```
