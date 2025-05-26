@@ -59,12 +59,15 @@ print(conf.matrix)
 
 ```{r}
 calc_roc <- function(thresh) {
-  pred_classes <- ifelse(preds  > thresh, "benign", "malignant")
-  conf.matrix <- table('Pred'=pred_classes, 'True'=test_set$class)
+  pred_classes <- ifelse(preds > thresh, "malignant", "benign")
+  conf.matrix <- table(
+    'Pred'=factor(pred_classes, levels=c("benign", "malignant")),
+    'True'=factor(test_set$class, levels=c("benign", "malignant"))
+  )
   return(conf.matrix)
 }
 
-calc_conf_matrix(0.5)
+calc_roc(0.5)
 ```
 
 ```{r}
@@ -73,19 +76,13 @@ TPR <- c()
 FPR <- c()
 for(thresh in threshs) {
   conf.matrix <- calc_roc(thresh)
+  TP <- conf.matrix["benign", "benign"]
+  FP <- conf.matrix["benign", "malignant"]
+  TN <- conf.matrix["malignant", "malignant"]
+  FN <- conf.matrix["malignant", "benign"]
   
-  # Ensure both classes are present
-  preds_levels <- c("benign", "malignant")
-  true_levels <- c("benign", "malignant")
-  conf.matrix <- conf.matrix[preds_levels, true_levels, drop=FALSE]
-  
-  TP <- ifelse(!is.na(conf.matrix["benign", "benign"]), conf.matrix["benign", "benign"], 0)
-  FP <- ifelse(!is.na(conf.matrix["benign", "malignant"]), conf.matrix["benign", "malignant"], 0)
-  FN <- ifelse(!is.na(conf.matrix["malignant", "benign"]), conf.matrix["malignant", "benign"], 0)
-  TN <- ifelse(!is.na(conf.matrix["malignant", "malignant"]), conf.matrix["malignant", "malignant"], 0)
-  
-  TPR <- c(TPR, TP / (TP + FN))
-  FPR <- c(FPR, FP / (FP + TN))
+  TPR <- c(TPR, TP / (TP + FN))  # Prawdziwie pozytywne
+  FPR <- c(FPR, FP / (FP + TN))  # Falszywie pozytywne
 }
 
 ```
@@ -95,14 +92,12 @@ print(FPR)
 ```
 
 ```{r}
-print(TPR)
+roc_data <- data.frame(FPR=FPR, TPR=TPR, CV=rep(1:length(threshs), each=length(FPR)))
 ```
 
 ```{r}
-roc_df <- data.frame(FPR=FPR, TPR=TPR)
-ggplot(roc_df, aes(x=FPR, y=TPR)) +
-  geom_line() +
-  labs(title="Krzywa ROC", x="Falszywie pozytywne", y="Prawdziwie pozytywne")
+library(ggplot2)
+ggplot(roc_data, aes(x=FPR, y=TPR)) + geom_line(alpha=0.4, color='orange') + theme_minimal()
 ```
 
 ```         
