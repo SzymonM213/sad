@@ -17,6 +17,8 @@ eps <- rnorm(nrow(Boston))
 
 ```{r}
 Boston <- Boston[, names(B)]
+
+Boston[, names(B)] <- scale(Boston[, names(B)], center = TRUE, scale = TRUE)
 ```
 
 ```{r}
@@ -77,13 +79,90 @@ library(glmnet)
 
 ```{r}
 simple.cv <- cv.glmnet(x=as.matrix(X_train),
-                       y=as.numeric(Y_train),
-                       standardize=F,
+                       y = Y_train,
+                       standardize=FALSE,
                        thresh=1e-16,
-                       alpha=1
+                       alpha=1,
                        )
 ```
 
 ```{r}
 plot(simple.cv)
 ```
+
+
+```{r}
+coef(simple.cv)
+```
+
+```{r}
+Y_lasso <- predict(simple.cv, as.matrix(X_test))
+```
+
+```{r}
+simple.lasso <- glmnet(as.matrix(X_train), Y_train)
+plot(simple.lasso)
+```
+
+### Task 2
+```{r}
+train_indices <- sample(1:nrow(Boston), size = 40)
+val_indices <- sample(setdiff(1:nrow(Boston), train_indices), size = 20)
+
+X_train <- Boston[train_indices, names(B)]
+X_val <- Boston[val_indices, names(B)]
+
+Y_train <- Boston[train_indices, 'Y']
+Y_val <- Boston[val_indices, 'Y']
+
+X_test <- Boston[-c(train_indices, val_indices), names(B)]
+Y_test <- Boston[-c(train_indices, val_indices), 'Y']
+```
+
+```{r}
+lasso_cv <- cv.glmnet(
+  as.matrix(X_train), Y_train,
+  standardize = FALSE,
+  thresh = 1e-16,
+  alpha = 1,
+  nfolds = nrow(X_train)
+)
+```
+
+```{r}
+thresholds <- seq(0, 1, length.out = 1000)
+val_errors <- numeric(length(thresholds))
+```
+
+```{r}
+coef_lasso <- as.numeric(coef(lasso_cv, s = "lambda.min"))[-1] # bez interceptu
+for (i in seq_along(thresholds)) {
+  beta_thr <- coef_lasso
+  beta_thr[abs(beta_thr) < thresholds[i]] <- 0
+  Y_pred_val <- as.matrix(X_val) %*% beta_thr
+  val_errors[i] <- mean((Y_val - Y_pred_val)^2)
+}
+```
+
+```{r}
+best_thr <- thresholds[which.min(val_errors)]
+cat("Najlepszy próg:", best_thr, "\n")
+beta_best <- coef_lasso
+beta_best[abs(beta_best) < best_thr] <- 0
+selected_vars <- names(B)[beta_best != 0]
+
+cat("Wybrane zmienne:", paste(selected_vars, collapse = ", "), "\n")
+```
+
+```{r}
+df_train_full <- as.data.frame(X_train)
+  df_train_full$Y <- Y_train
+  formula_str <- paste("Y ~", paste(selected_vars, collapse = " + "))
+  lm_debiased <- lm(as.formula(formula_str), data = df_train_full)
+  print(summary(lm_debiased))
+  cat("Porównanie estymatorów z prawdziwymi wartościami:\n")
+  print(data.frame(
+    beta_hat = coef(lm_debiased)[-1],
+    beta_true = B[selected_vars]
+  ))
+  ```
