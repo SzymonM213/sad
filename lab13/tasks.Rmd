@@ -1,0 +1,167 @@
+### Task 1
+
+```{r}
+dane <- read.table("lab13/ais.txt", header = T)
+A <- dane[, c(1, 2)]
+B <- dane[,-c(1,2)]
+B <- scale(B)
+```
+```{r}
+B_svd <- svd(B)
+B_V <- B_svd$v
+B_Sigma <- B_svd$d
+B_U <- B_svd$u
+```
+```{r}
+B_Sigma^2
+```
+```{r}
+cumsum(B_Sigma^2)/sum(B_Sigma^2)
+```
+```{r}
+data.frame('Zmienna' = colnames(B), 'Pierwszy kierunek' = B_V[, 1], 'Drugi kierunek' = B_V[,2])
+```
+```{r}
+SG <- B %*% B_V
+SG <- data.frame(SG)
+colnames(SG) <- paste0('PC', 1:11)  # 'PC' jak 'Principal Component'
+SG$Sport <- dane$Sport
+SG$Sex <- dane$Sex
+```
+```{r}
+library(ggplot2)
+ggplot(SG) + geom_point(aes(x=PC1, y=PC2, col=Sport, pch=Sex)) + theme_minimal()
+```
+```{r}
+apply(B %*% B_V, 2, var)
+```
+```{r}
+B_Sigma^2/nrow(B)
+```
+```{r}
+pr.pca <- prcomp(B, retx=T)  
+prin.pca <- princomp(B, scores=T) 
+```
+```{r}
+summary(pr.pca)
+```
+```{r}
+summary(prin.pca)
+```
+```{r}
+data.frame('prcomp' = pr.pca$rotation[,2], 'princomp' = prin.pca$loadings[,2])
+```
+```{r}
+library(patchwork)  # przydatna biblioteka do łączenia wykresów z ggplot2
+p1 <- ggplot(data.frame(pr.pca$x)) + geom_point(aes(x=PC1, y=PC2)) + theme_minimal() + ggtitle('', subtitle='Otrzymane funkcją prcomp')
+p2 <- ggplot(data.frame(prin.pca$scores)) + geom_point(aes(x=Comp.1, y=Comp.2)) + theme_minimal() + ggtitle('', subtitle='Otrzymane funkcją princomp')
+p1 + p2 + plot_annotation(title = 'Porównanie pierwszych dwóch składowych głównych')
+```
+```{r}
+knitr::opts_chunk$set(echo = F, include=F)
+```
+
+### Task 2
+
+```{r}
+library(ggplot2)
+data(iris)
+
+iris_num <- iris[, 1:4]
+
+pca_iris <- prcomp(iris_num, center = TRUE, scale. = TRUE)
+pca_df <- data.frame(pca_iris$x[, 1:2], Species = iris$Species)
+```
+
+```{r}
+p1 <- ggplot(pca_df, aes(x = PC1, y = PC2, color = Species)) +
+  geom_point(size=2) +
+  theme_minimal() +
+  ggtitle("PCA: oryginalne dane iris")
+
+p1
+```
+
+```{r}
+pca_with_noise <- function(sd_noise) {
+  set.seed(123)
+  noise <- matrix(rnorm(nrow(iris) * 100, mean = 0, sd = sd_noise), nrow = nrow(iris))
+  colnames(noise) <- paste0("noise", 1:100)
+  iris_aug <- cbind(iris_num, noise)
+  pca <- prcomp(iris_aug, center = TRUE, scale. = TRUE)
+  data.frame(PC1 = pca$x[, 1], PC2 = pca$x[, 2], Species = iris$Species)
+}
+```
+
+```{r}
+pca_df_noise1 <- pca_with_noise(1)
+p2 <- ggplot(pca_df_noise1, aes(x = PC1, y = PC2, color = Species)) +
+  geom_point(size=2) +
+  theme_minimal() +
+  ggtitle("PCA: iris + 100 szumów (sd=1)")
+
+p2
+```
+```{r}
+pca_df_noise01 <- pca_with_noise(0.1)
+p3 <- ggplot(pca_df_noise01, aes(x = PC1, y = PC2, color = Species)) +
+  geom_point(size=2) +
+  theme_minimal() +
+  ggtitle("PCA: iris + 100 szumów (sd=0.1)")
+
+p3
+```
+
+```{r}
+pca_df_noise4 <- pca_with_noise(4)
+p4 <- ggplot(pca_df_noise4, aes(x = PC1, y = PC2, color = Species)) +
+  geom_point(size=2) +
+  theme_minimal() +
+  ggtitle("PCA: iris + 100 szumów (sd=4)")
+
+p4
+```
+
+### Task 3
+```{r}
+set.seed(123)
+X <- matrix(rnorm(300), ncol = 3)
+
+X[,1] <- X[,1] * 4
+X[,2] <- X[,2] * 2
+```
+```{r}
+library(rgl)
+plot3d(X, col = 'blue', size = 5)
+
+rglwidget()
+```
+```{r}
+pca1 <- prcomp(X, center = TRUE, scale. = FALSE)
+print(pca1$rotation)
+```
+```{r}
+library(ggplot2)
+df1 <- data.frame(PC1 = pca1$x[,1], PC2 = pca1$x[,2])
+ggplot(df1, aes(x = PC1, y = PC2)) +
+  geom_point() +
+  theme_minimal() +
+  ggtitle("PCA: pierwsze dwie składowe główne (oryginalne dane)")
+```
+
+```{r}
+X2 <- X
+X2[100,] <- c(40, 40, 40)
+```
+
+```{r}
+pca2 <- prcomp(X2, center = TRUE, scale. = FALSE)
+print(pca2$rotation)
+```
+```{r}
+df2 <- data.frame(PC1 = pca2$x[,1], PC2 = pca2$x[,2])
+ggplot(df2, aes(x = PC1, y = PC2)) +
+  geom_point() +
+  theme_minimal() +
+  ggtitle("PCA: pierwsze dwie składowe główne (z odstającą obserwacją)")
+```
